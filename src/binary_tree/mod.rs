@@ -1,57 +1,73 @@
-pub type NodeRef<T> = Option<Box<Node<T>>>;
+pub type OptionNodeRef<T> = Option<Box<Node<T>>>;
+pub type NodeRef<T> = Box<Node<T>>;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Node<T> {
     pub value: T,
-    pub left: Option<Box<Node<T>>>,
-    pub right: Option<Box<Node<T>>>,
+    pub left: OptionNodeRef<T>,
+    pub right: OptionNodeRef<T>,
+}
+
+impl From<i32> for Node<i32> {
+    fn from(val: i32) -> Self {
+        Node::<i32>::new(val)
+    }
 }
 
 impl<T> Node<T> {
-    pub fn new(value: T) -> Box<Node<T>> {
-        Box::new(Node {
+    pub fn new(value: T) -> Node<T>
+    where
+        T: Default,
+    {
+        Node::<T> {
             value,
-            left: None,
-            right: None,
-        })
+            ..Default::default()
+        }
     }
 
-    pub fn generate_tree(level: usize, counter: &mut i32) -> NodeRef<i32> {
+    fn left<N>(mut self, node: N) -> Self
+    where
+        N: Into<Node<T>>,
+        T: std::fmt::Debug,
+    {
+        self.left = Some(Box::new(node.into()));
+        self
+    }
+
+    fn right<N>(mut self, node: N) -> Self
+    where
+        N: Into<Node<T>>,
+        T: std::fmt::Debug,
+    {
+        self.right = Some(Box::new(node.into()));
+        self
+    }
+}
+
+fn root(value: i32) -> Node<i32> {
+    Node::new(value)
+}
+
+impl<T> Node<T> {
+    pub fn generate_tree(level: usize) -> OptionNodeRef<i32> {
         if level == 0 {
             None
         } else {
-            let mut root = Node {
-                value: *counter,
-                left: None,
-                right: None,
-            };
-            *counter += 1;
-            root.left = Self::generate_tree(level - 1, counter);
-            root.right = Self::generate_tree(level - 1, counter);
+            let root = root(1).left(root(2).left(4).right(5)).right(3);
             Some(Box::new(root))
         }
     }
 
     pub fn create_unbalanced_tree() -> NodeRef<i32> {
-        let mut root = Node::new(1);
-        let mut left_node = Some(Node::new(2));
-        match left_node {
-            Some(ref mut node) => {
-                node.left = Some(Node::new(4));
-                node.right = Some(Node::new(5));
-            }
-            None => {}
-        }
-        root.left = left_node;
-        root.right = Some(Node::new(3));
-        Some(root)
+        let root = root(1).left(root(2).left(4).right(5)).right(3);
+        Box::new(root)
     }
 }
 
 pub mod traversal {
-    use super::NodeRef;
+    use super::OptionNodeRef;
 
-    pub fn post_order(root: NodeRef<i32>, buffer: &mut Vec<i32>) {
+    pub fn post_order(root: OptionNodeRef<i32>, buffer: &mut Vec<i32>) {
         // TODO(pplanel): how to get the len of tree by level
         match root {
             Some(node) => {
@@ -63,25 +79,25 @@ pub mod traversal {
         }
     }
 
-    pub fn pre_order(root: NodeRef<i32>, level: usize, buffer: &mut Vec<i32>) {
+    pub fn pre_order(root: OptionNodeRef<i32>, buffer: &mut Vec<i32>) {
         // TODO(pplanel): how to get the len of tree by level
         match root {
             Some(node) => {
                 buffer.push(node.value);
-                pre_order(node.left, level + 1, buffer);
-                pre_order(node.right, level + 1, buffer);
+                pre_order(node.left, buffer);
+                pre_order(node.right, buffer);
             }
             None => {}
         }
     }
 
-    pub fn in_order(root: NodeRef<i32>, level: usize, buffer: &mut Vec<i32>) {
+    pub fn in_order(root: OptionNodeRef<i32>, buffer: &mut Vec<i32>) {
         // TODO(pplanel): how to get the len of tree by level
         match root {
             Some(node) => {
-                in_order(node.left, level + 1, buffer);
+                in_order(node.left, buffer);
                 buffer.push(node.value);
-                in_order(node.right, level + 1, buffer);
+                in_order(node.right, buffer);
             }
             None => {}
         }
