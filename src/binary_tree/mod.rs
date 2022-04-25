@@ -3,8 +3,11 @@ use std::collections::VecDeque;
 pub type OptionNodeRef<T> = Option<Box<Node<T>>>;
 pub type NodeRef<T> = Box<Node<T>>;
 
-#[derive(Debug, Default, PartialEq)]
-pub struct Node<T> {
+#[derive(Debug, Default, PartialEq, PartialOrd, Clone)]
+pub struct Node<T>
+where
+    T: PartialOrd + PartialEq + Clone,
+{
     pub value: T,
     pub left: OptionNodeRef<T>,
     pub right: OptionNodeRef<T>,
@@ -16,7 +19,10 @@ impl From<i32> for Node<i32> {
     }
 }
 
-impl<T> Node<T> {
+impl<T> Node<T>
+where
+    T: PartialEq + PartialOrd + Clone,
+{
     pub fn new(value: T) -> Node<T> {
         Node::<T> {
             value,
@@ -48,7 +54,10 @@ pub fn root(value: i32) -> Node<i32> {
     Node::new(value)
 }
 
-impl<T> Node<T> {
+impl<T> Node<T>
+where
+    T: PartialOrd + PartialEq + Clone,
+{
     pub fn create_unbalanced_tree() -> NodeRef<i32> {
         let root = root(1).left(root(2).left(4).right(5)).right(3);
         Box::new(root)
@@ -77,6 +86,25 @@ impl<T> Node<T> {
                     return;
                 }
             }
+        }
+    }
+
+    pub fn search(self, value: T) -> OptionNodeRef<T> {
+        if self.value == value {
+            return Some(Box::new(self));
+        }
+        let curr = self;
+        if curr.value < value {
+            if let Some(right) = curr.right {
+                Self::search(*right, value.clone())
+            } else {
+                None
+            };
+        }
+        if let Some(left) = curr.left {
+            Self::search(*left, value)
+        } else {
+            panic!("null");
         }
     }
 }
@@ -139,5 +167,80 @@ pub mod traversal {
             }
             None => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod test_binary_tree_traversal {
+    use crate::binary_tree::{root, stack_traversal, traversal, Node};
+
+    #[test]
+    fn test_search_fb() {
+        let mut tree = Node::new(1);
+        tree.insert(2);
+        tree.insert(3);
+        tree.insert(4);
+        tree.insert(5);
+        tree.insert(6);
+        if let Some(node) = tree.search(6) {
+            assert_eq!(*node, root(6));
+        }
+    }
+
+    #[test]
+    fn test_insert_fb() {
+        let mut tree = Node::new(1);
+        tree.insert(2);
+        tree.insert(3);
+        tree.insert(4);
+        tree.insert(5);
+        assert_eq!(tree, root(1).left(root(2).left(4).right(5)).right(3));
+        tree.insert(6);
+        assert_eq!(
+            tree,
+            root(1)
+                .left(root(2).left(4).right(5))
+                .right(root(3).left(6))
+        );
+    }
+
+    #[test]
+    fn test_in_order_stack() {
+        let mut buffer = Vec::new();
+        let root = Node::<i32>::create_unbalanced_tree();
+        stack_traversal::in_order(&root, &mut buffer);
+        assert_eq!(buffer, vec![4, 2, 5, 1, 3]);
+    }
+
+    //#[test]
+    //fn test_post_order_stack() {
+    //    let mut buffer = Vec::new();
+    //    let root = Node::<i32>::create_unbalanced_tree();
+    //    stack_traversal::post_order(&root, &mut buffer);
+    //    assert_eq!(buffer, vec![4, 5, 2, 3, 1]);
+    //}
+
+    #[test]
+    fn test_in_order() {
+        let mut buffer = Vec::new();
+        let root = Node::<i32>::create_unbalanced_tree();
+        traversal::in_order(Some(root), &mut buffer);
+        assert_eq!(buffer, vec![4, 2, 5, 1, 3]);
+    }
+
+    #[test]
+    fn test_pre_order() {
+        let mut buffer = Vec::new();
+        let root = Node::<i32>::create_unbalanced_tree();
+        traversal::pre_order(Some(root), &mut buffer);
+        assert_eq!(buffer, vec![1, 2, 4, 5, 3]);
+    }
+
+    #[test]
+    fn test_post_order() {
+        let mut buffer = Vec::with_capacity(5);
+        let root = Node::<i32>::create_unbalanced_tree();
+        traversal::post_order(Some(root), &mut buffer);
+        assert_eq!(buffer, vec![4, 5, 2, 3, 1]);
     }
 }
